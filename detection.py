@@ -234,25 +234,16 @@ def _infer_pipeline(
     return spoof_prob, cm_score, raw_scores
 
 
-def _infer_classifier(
+def _infer_pipeline(
     entry: _LoadedModel, wav: np.ndarray
 ) -> Tuple[float, float, Dict[str, float]]:
-    """Run inference using an AutoModelForAudioClassification model."""
-    import torch
-
-    inputs     = entry.processor(wav, sampling_rate=TARGET_SR, return_tensors="pt", padding=True)
-    with torch.no_grad():
-        logits_tensor = entry.model(**inputs).logits
-
-    logits_np = logits_tensor.squeeze().cpu().numpy()
-    si, bi    = entry.spoof_idx, entry.bonafide_idx
-    cm_score  = float(logits_np[si] - logits_np[bi])
-
-    shifted    = logits_np - np.max(logits_np)
-    probs      = np.exp(shifted) / np.sum(np.exp(shifted))
-    spoof_prob = float(np.clip(probs[si], _PROB_EPS, 1.0 - _PROB_EPS))
-    raw_scores = {entry.id2label[i]: round(float(p), 4) for i, p in enumerate(probs)}
-
+    """Run inference."""
+    result     = entry.pipeline(wav)
+    logits     = result["logits"][0]
+    si, bi     = entry.spoof_idx, entry.bonafide_idx
+    cm_score   = float(logits[si] - logits[bi])
+    spoof_prob = float(np.clip(1 / (1 + np.exp(-cm_score)), _PROB_EPS, 1.0 - _PROB_EPS))
+    raw_scores = {k: round(float(v), 4) for k, v in result["all_scores"].items()}
     return spoof_prob, cm_score, raw_scores
 
 
@@ -777,7 +768,7 @@ def score_and_cache(
             progress_cb(i + 1, len(to_score))
 
     if partial_file.exists():
-        partial_file.rename(cache_file)
+        partial_file.replace(cache_file)
 
     return scores_out
 
