@@ -520,12 +520,13 @@ def render_synthetic_content_tab(
             if r.error:
                 st.error(f"{dname}: {r.error}")
                 continue
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Model",      dname)
-            c2.metric("Synth prob", round(r.spoof_prob, 4))
-            c3.metric("CM score",   round(r.cm_score,   4))
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Model",         dname)
+            c2.metric("Synth prob",    round(r.spoof_prob, 4))
+            c3.metric("Bonafide prob", round(1 - r.spoof_prob, 4))
+            c4.metric("CM score",      round(r.cm_score, 4))
             pred_color = "#ff4f4f" if r.prediction == "synthetic" else "#3ddc84"
-            c4.markdown(
+            c5.markdown(
                 f"**Prediction:** <span style='color:{pred_color};"
                 f"font-weight:bold;'>{r.prediction.upper()}</span>",
                 unsafe_allow_html=True,
